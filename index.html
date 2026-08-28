@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduPulse ERP - Integrated Student Management System</title>
+    <title> AmphiLearn ERP - NEP 2020 Integrated Student Management System</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -1347,7 +1347,16 @@
 
         function closeModal() {
             document.getElementById('modal-backdrop').classList.add('hidden');
-        }
-    </script>
+      } 
+      </script>
+
+<!-- load database module -->
+<script type="module">
+  import { database } from './src/data/database.js';
+
+  // Quick test: Log database to browser console and update document title
+  console.log("Database connected successfully:", database);
+  document.title = database.appConfig.systemName + " - " + database.appConfig.portalType;
+</script>
 </body>
 </html>
