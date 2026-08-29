@@ -1356,6 +1356,16 @@
 
   // Quick test: Log database to browser console and update document title
   console.log("Database connected successfully:", database);
+    window.state = {
+        currentRole: 'student',
+        config: database.appConfig,
+        nepRules: database.nepFramework,
+        students: database.students,
+        faculty: database.faculty,
+        activeStudent: database.students[0] // Defaults to Alex Morgan
+    };
+    
+            
   document.title = database.appConfig.systemName + " - " + database.appConfig.portalType;
 </script>
 </body>
