@@ -3,12 +3,12 @@
 # =========================================================================
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthCredentials
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Boolean
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship, joinedload
 from sqlalchemy.pool import QueuePool
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
@@ -28,14 +28,14 @@ logger = logging.getLogger(__name__)
 # =========================================================================
 class Settings(BaseSettings):
     """Application settings loaded from .env file"""
-    database_url: str = "postgresql://edupulse:edupulse_password@localhost:5432/edupulse"
-    secret_key: str = "your-secret-key-here-change-in-production"
+    database_url: str
+    secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     cors_origins: List[str] = ["http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:5500"]
     app_name: str = "EduPulse ERP"
     app_version: str = "1.0.0"
-    fastapi_debug: bool = True
+    fastapi_debug: bool = False
     
     class Config:
         env_file = ".env"
@@ -49,7 +49,6 @@ settings = Settings()
 # =========================================================================
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-http_bearer = HTTPBearer()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against its hashed version"""
@@ -520,31 +519,6 @@ def faculty_login(credentials: FacultyLogin, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user": FacultyResponse.model_validate(faculty).model_dump()
     }
-
-
-@app.post("/api/auth/admin-login", response_model=TokenResponse)
-def admin_login(credentials: StudentLogin):
-    """Admin login endpoint (simplified for demo)"""
-    if credentials.email == "admin@edupulse.edu" and credentials.password == "admin123":
-        access_token = create_access_token(
-            data={"sub": "ADMIN-01", "type": "admin"}
-        )
-        logger.info("Admin login successful")
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": {
-                "id": "ADMIN-01",
-                "name": "System Administrator",
-                "email": "admin@edupulse.edu",
-                "avatar": "SA"
-            }
-        }
-    
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid admin credentials"
-    )
 
 
 @app.post("/api/auth/student-register", response_model=TokenResponse)
@@ -1257,7 +1231,8 @@ def health_check():
 async def startup_event():
     """Initialize database on startup"""
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
-    logger.info(f"Database: {settings.database_url.split('@')[1] if '@' in settings.database_url else 'unknown'}")
+    db_info = settings.database_url.split("@")[1] if "@" in settings.database_url else "unknown"
+    logger.info(f"Database: {db_info}")
     logger.info(f"CORS Origins: {settings.cors_origins}")
 
 
@@ -1272,6 +1247,6 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         app,
-        host=settings.fastapi_debug and "0.0.0.0" or "127.0.0.1",
+        host="0.0.0.0",
         port=8000
     )
