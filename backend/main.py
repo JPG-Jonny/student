@@ -113,7 +113,7 @@ def get_db():
 class Student(Base):
     __tablename__ = "students"
     
-    id = Column(String, primary_key=True, default=lambda: f"STU{str(uuid.uuid4())[:8].upper()}")
+    id = Column(String, primary_key=True, default=lambda: f"STU{str(uuid.uuid4()).upper()}")
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False, index=True)
     phone = Column(String)
@@ -150,11 +150,18 @@ class Faculty(Base):
     # Relationships
     assignments = relationship("Assignment", back_populates="faculty", cascade="all, delete-orphan")
 
-
+class Admin(Base):
+    __tablename__ = "admins"
+    
+    id = Column(String, primary_key=True, default=lambda: f"ADM-{str(uuid.uuid4()).upper()}")
+    name = Column(String, nullable=False)
+    email = Column(String, unique=True, nullable=False, index=True)
+    hashed_password = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 class Assignment(Base):
     __tablename__ = "assignments"
     
-    id = Column(String, primary_key=True, default=lambda: f"ASN-{str(uuid.uuid4())[:8].upper()}")
+    id = Column(String, primary_key=True, default=lambda: f"ASN-{str(uuid.uuid4()).upper()}")
     title = Column(String, nullable=False)
     subject = Column(String, nullable=False)
     faculty_id = Column(String, ForeignKey("faculties.id"), index=True)
@@ -171,7 +178,7 @@ class Assignment(Base):
 class AssignmentSubmission(Base):
     __tablename__ = "assignment_submissions"
     
-    id = Column(String, primary_key=True, default=lambda: f"SUB-{str(uuid.uuid4())[:8].upper()}")
+    id = Column(String, primary_key=True, default=lambda: f"SUB-{str(uuid.uuid4()).upper()}")
     assignment_id = Column(String, ForeignKey("assignments.id"), index=True)
     student_id = Column(String, ForeignKey("students.id"), index=True)
     status = Column(String, default="Pending")
@@ -187,7 +194,7 @@ class AssignmentSubmission(Base):
 class AttendanceRecord(Base):
     __tablename__ = "attendance_records"
     
-    id = Column(String, primary_key=True, default=lambda: f"ATT-{str(uuid.uuid4())[:8].upper()}")
+    id = Column(String, primary_key=True, default=lambda: f"ATT-{str(uuid.uuid4()).upper()}")
     student_id = Column(String, ForeignKey("students.id"), index=True)
     subject = Column(String, nullable=False)
     total_classes = Column(Integer, default=0)
@@ -202,7 +209,7 @@ class AttendanceRecord(Base):
 class Activity(Base):
     __tablename__ = "activities"
     
-    id = Column(String, primary_key=True, default=lambda: f"ACT-{str(uuid.uuid4())[:8].upper()}")
+    id = Column(String, primary_key=True, default=lambda: f"ACT-{str(uuid.uuid4()).upper()}")
     student_id = Column(String, ForeignKey("students.id"), index=True)
     title = Column(String, nullable=False)
     category = Column(String)
@@ -219,7 +226,7 @@ class Activity(Base):
 class CreditTransfer(Base):
     __tablename__ = "credit_transfers"
     
-    id = Column(String, primary_key=True, default=lambda: f"TRF-{str(uuid.uuid4())[:8].upper()}")
+    id = Column(String, primary_key=True, default=lambda: f"TRF-{str(uuid.uuid4()).upper()}")
     student_id = Column(String, ForeignKey("students.id"), index=True)
     source_inst = Column(String, nullable=False)
     dest_inst = Column(String, default="EduPulse Univ")
@@ -243,6 +250,17 @@ Base.metadata.create_all(bind=engine)
 class StudentLogin(BaseModel):
     email: str
     password: str
+class AdminLogin(BaseModel):
+    email: str
+    password: str
+
+class AdminResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    
+class Config:
+    from_attributes = True
 
 
 class StudentRegister(BaseModel):
@@ -464,6 +482,20 @@ async def get_current_faculty(
         )
     return faculty
 
+    
+    async def get_current_admin(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> Admin:
+    payload = decode_access_token(token)
+    admin_id: str = payload.get("sub")
+    if admin_id is None or payload.get("type") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    admin = db.query(Admin).filter(Admin.id == admin_id).first()
+    if not admin:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin account not found")
+    return admin
+
 
 # =========================================================================
 # AUTHENTICATION ENDPOINTS
@@ -573,11 +605,11 @@ def faculty_register(data: FacultyRegister, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
-    avatar = "".join([n[0].upper() for n in data.name.split()])
+
+    # Generate initials for avatar
+    avatar = "".join([n[0].upper() for n in data.name.split()]) if data.name else ""
+
+    # Create and persist new faculty
     new_faculty = Faculty(
         name=data.name,
         email=data.email,
@@ -591,9 +623,10 @@ def faculty_register(data: FacultyRegister, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_faculty)
     
+    # Generate access token
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(
-        data={"sub": new_faculty.id, "type": "faculty"},
+        data={"sub": str(new_faculty.id), "type": "faculty"},
         expires_delta=access_token_expires
     )
     
@@ -605,6 +638,21 @@ def faculty_register(data: FacultyRegister, db: Session = Depends(get_db)):
         "user": FacultyResponse.model_validate(new_faculty).model_dump()
     }
 
+@app.post("/api/auth/admin-login", response_model=TokenResponse)
+def admin_login(credentials: AdminLogin, db: Session = Depends(get_db)):
+    admin = db.query(Admin).filter(Admin.email == credentials.email).first()
+    if not admin or not verify_password(credentials.password, admin.hashed_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+    
+    access_token = create_access_token(
+        data={"sub": str(admin.id), "type": "admin"},
+        expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": AdminResponse.model_validate(admin).model_dump()
+    }
 
 # =========================================================================
 # STUDENT ENDPOINTS (Protected)
@@ -1253,3 +1301,22 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000
     )
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info(f"Starting {settings.app_name} v{settings.app_version}")
+    db = SessionLocal()
+    try:
+        admin_email = "admin@edupulse.com"
+        if not db.query(Admin).filter(Admin.email == admin_email).first():
+            db.add(Admin(
+                name="System Administrator",
+                email=admin_email,
+                hashed_password=get_password_hash("Admin@123456")
+            ))
+            db.commit()
+            logger.info("Default admin user created: admin@edupulse.com / Admin@123456")
+    finally:
+        db.close()
+
+
