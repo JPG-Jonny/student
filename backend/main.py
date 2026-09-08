@@ -1,22 +1,42 @@
 # =========================================================================
-# EDUPULSE ERP BACKEND - FASTAPI + SQLALCHEMY
+# EDUPULSE ERP BACKEND - FASTAPI + SQLALCHEMY + POSTGRESQL
 # =========================================================================
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
+from sqlalchemy.pool import QueuePool
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import List, Optional
 import uuid
+import os
+from dotenv import load_dotenv
+
+# =========================================================================
+# ENVIRONMENT CONFIGURATION
+# =========================================================================
+load_dotenv()
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://edupulse:password@localhost:5432/edupulse"
+)
 
 # =========================================================================
 # DATABASE CONFIGURATION
 # =========================================================================
-DATABASE_URL = "sqlite:///./edupulse.db"
+engine = create_engine(
+    DATABASE_URL,
+    poolclass=QueuePool,
+    pool_size=20,
+    max_overflow=10,
+    pool_recycle=3600,
+    pool_pre_ping=True,
+    echo=False
+)
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -29,7 +49,7 @@ class Student(Base):
     
     id = Column(String, primary_key=True, default=lambda: f"STU{str(uuid.uuid4())[:8].upper()}")
     name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String, unique=True, nullable=False, index=True)
     phone = Column(String)
     password = Column(String, nullable=False)
     department = Column(String, nullable=False)
@@ -40,7 +60,7 @@ class Student(Base):
     total_credits = Column(Integer, default=0)
     attendance_pct = Column(Float, default=100.0)
     avatar = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
     
     # Relationships
     attendance_records = relationship("AttendanceRecord", back_populates="student", cascade="all, delete-orphan")
@@ -54,12 +74,12 @@ class Faculty(Base):
     
     id = Column(String, primary_key=True, default=lambda: f"FAC{str(uuid.uuid4())[:6].upper()}")
     name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String, unique=True, nullable=False, index=True)
     password = Column(String, nullable=False)
     department = Column(String, nullable=False)
     course = Column(String)
     avatar = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
     
     # Relationships
     assignments = relationship("Assignment", back_populates="faculty", cascade="all, delete-orphan")
@@ -71,11 +91,11 @@ class Assignment(Base):
     id = Column(String, primary_key=True, default=lambda: f"ASN-{str(uuid.uuid4())[:8].upper()}")
     title = Column(String, nullable=False)
     subject = Column(String, nullable=False)
-    faculty_id = Column(String, ForeignKey("faculties.id"))
+    faculty_id = Column(String, ForeignKey("faculties.id"), index=True)
     description = Column(String)
     due_date = Column(String, nullable=False)
     max_marks = Column(Integer, default=100)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
     
     # Relationships
     faculty = relationship("Faculty", back_populates="assignments")
@@ -86,8 +106,8 @@ class AssignmentSubmission(Base):
     __tablename__ = "assignment_submissions"
     
     id = Column(String, primary_key=True, default=lambda: f"SUB-{str(uuid.uuid4())[:8].upper()}")
-    assignment_id = Column(String, ForeignKey("assignments.id"))
-    student_id = Column(String, ForeignKey("students.id"))
+    assignment_id = Column(String, ForeignKey("assignments.id"), index=True)
+    student_id = Column(String, ForeignKey("students.id"), index=True)
     status = Column(String, default="Pending")  # Pending, Submitted, Graded, Late
     marks = Column(Integer, default=None)
     feedback = Column(String, default="")
@@ -102,7 +122,7 @@ class AttendanceRecord(Base):
     __tablename__ = "attendance_records"
     
     id = Column(String, primary_key=True, default=lambda: f"ATT-{str(uuid.uuid4())[:8].upper()}")
-    student_id = Column(String, ForeignKey("students.id"))
+    student_id = Column(String, ForeignKey("students.id"), index=True)
     subject = Column(String, nullable=False)
     total_classes = Column(Integer, default=0)
     attended = Column(Integer, default=0)
@@ -117,7 +137,7 @@ class Activity(Base):
     __tablename__ = "activities"
     
     id = Column(String, primary_key=True, default=lambda: f"ACT-{str(uuid.uuid4())[:8].upper()}")
-    student_id = Column(String, ForeignKey("students.id"))
+    student_id = Column(String, ForeignKey("students.id"), index=True)
     title = Column(String, nullable=False)
     category = Column(String)  # Academic/Competition, Workshops, Internships, Extracurricular
     date = Column(String)
@@ -134,13 +154,13 @@ class CreditTransfer(Base):
     __tablename__ = "credit_transfers"
     
     id = Column(String, primary_key=True, default=lambda: f"TRF-{str(uuid.uuid4())[:8].upper()}")
-    student_id = Column(String, ForeignKey("students.id"))
+    student_id = Column(String, ForeignKey("students.id"), index=True)
     source_inst = Column(String, nullable=False)
     dest_inst = Column(String, default="EduPulse Univ")
     course = Column(String, nullable=False)
     credits = Column(Integer, nullable=False)
     grade = Column(String)
-    status = Column(String, default="Pending")  # Pending, Approved, Rejected
+    status = Column(String, default="Pending", index=True)  # Pending, Approved, Rejected
     request_date = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -716,19 +736,6 @@ def get_assignment_submissions(faculty_id: str, assignment_id: str, db: Session 
     return result
 
 
-@app.post("/api/faculties/{faculty_id}/assignments/{assignment_id}/grade")
-def grade_assignment(faculty_id: str, assignment_id: str, data: GradeSubmitRequest, db: Session = Depends(get_db)):
-    """Grade an assignment submission"""
-    submission = db.query(AssignmentSubmission).filter(
-        AssignmentSubmission.assignment_id == data.assignment_id,
-        AssignmentSubmission.student_id == data.assignment_id
-    ).first()
-    
-    # This endpoint needs adjustment - it should accept student_id
-    # For now, we'll create a more flexible version
-    raise HTTPException(status_code=400, detail="Use /api/assignments/submissions/{submission_id}/grade instead")
-
-
 @app.put("/api/assignments/submissions/{submission_id}/grade")
 def grade_submission(submission_id: str, data: GradeSubmitRequest, db: Session = Depends(get_db)):
     """Grade a specific assignment submission"""
@@ -752,6 +759,24 @@ def grade_submission(submission_id: str, data: GradeSubmitRequest, db: Session =
     }
 
 
+@app.get("/api/faculties/{faculty_id}/students")
+def get_faculty_students(faculty_id: str, db: Session = Depends(get_db)):
+    """Get all students (for faculty view)"""
+    students = db.query(Student).all()
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "email": s.email,
+            "department": s.department,
+            "cgpa": s.cgpa,
+            "attendancePct": s.attendance_pct,
+            "avatar": s.avatar
+        }
+        for s in students
+    ]
+
+
 # =========================================================================
 # ADMIN ENDPOINTS
 # =========================================================================
@@ -760,7 +785,18 @@ def grade_submission(submission_id: str, data: GradeSubmitRequest, db: Session =
 def get_all_students(db: Session = Depends(get_db)):
     """Get all students (admin only)"""
     students = db.query(Student).all()
-    return [StudentResponse.model_validate(s) for s in students]
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "email": s.email,
+            "department": s.department,
+            "cgpa": s.cgpa,
+            "attendancePct": s.attendance_pct,
+            "avatar": s.avatar
+        }
+        for s in students
+    ]
 
 
 @app.get("/api/admin/faculties")
@@ -844,3 +880,8 @@ def reject_credit_transfer(transfer_id: str, db: Session = Depends(get_db)):
 def health_check():
     """Health check endpoint"""
     return {"status": "operational", "message": "EduPulse ERP Backend is running"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
