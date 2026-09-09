@@ -1,0 +1,182 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduPulse ERP - Integrated Student Management System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- TOP NAV BAR -->
+    <header id="app-header" class="hidden bg-slate-900 text-white sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2 rounded-lg text-white">
+                    <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-lg tracking-tight">EduPulse <span class="text-blue-400 font-normal">ERP</span></span>
+                    <span id="role-badge" class="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">Role</span>
+                </div>
+            </div>
+
+            <!-- Global Search & User Info -->
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex items-center gap-3 border-r border-slate-700 pr-4">
+                    <div class="text-right">
+                        <p id="header-user-name" class="text-sm font-medium leading-none">User Name</p>
+                        <p id="header-user-sub" class="text-xs text-slate-400 mt-1">ID/Dept</p>
+                    </div>
+                    <div id="header-avatar" class="w-9 h-9 rounded-full bg-blue-600 text-white font-semibold flex items-center justify-center text-sm border-2 border-slate-700">
+                        UN
+                    </div>
+                </div>
+                <button onclick="handleLogout()" class="flex items-center gap-2 text-slate-300 hover:text-white text-sm bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Switch Role / Exit</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ========================================== -->
+        <!-- 1. AUTHENTICATION SURFACE (LOGIN / REGISTER) -->
+        <!-- ========================================== -->
+        <section id="auth-screen" class="flex-1 flex items-center justify-center py-8">
+            <div class="w-full max-w-xl bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                <!-- Portal Selector Tabs -->
+                <div class="bg-slate-900 p-6 text-white text-center relative overflow-hidden">
+                    <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-600/20 rounded-full blur-2xl"></div>
+                    <i data-lucide="building-2" class="w-12 h-12 mx-auto text-blue-400 mb-2"></i>
+                    <h1 class="text-2xl font-bold">EduPulse Portal Access</h1>
+                    <p class="text-slate-400 text-sm mt-1">Unified Higher Education Management Platform</p>
+
+                    <!-- Role Surface Switcher -->
+                    <div class="grid grid-cols-3 gap-1 bg-slate-800 p-1 rounded-xl mt-6">
+                        <button onclick="setAuthRole('student')" id="tab-btn-student" class="auth-tab py-2 text-xs sm:text-sm font-medium rounded-lg transition-all bg-blue-600 text-white shadow">Student</button>
+                        <button onclick="setAuthRole('faculty')" id="tab-btn-faculty" class="auth-tab py-2 text-xs sm:text-sm font-medium rounded-lg text-slate-400 hover:text-white transition-all">Teacher</button>
+                        <button onclick="setAuthRole('admin')" id="tab-btn-admin" class="auth-tab py-2 text-xs sm:text-sm font-medium rounded-lg text-slate-400 hover:text-white transition-all">Admin</button>
+                    </div>
+                </div>
+
+                <div class="p-6 sm:p-8">
+                    <!-- Toggle Between Login and Register Form -->
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 id="auth-title" class="text-xl font-bold text-slate-800">Student Portal Login</h2>
+                        <button onclick="toggleAuthMode()" id="auth-toggle-btn" class="text-xs font-semibold text-blue-600 hover:text-blue-800">New Registration?</button>
+                    </div>
+
+                    <!-- LOGIN FORM -->
+                    <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">User Identification / Email</label>
+                            <div class="relative">
+                                <i data-lucide="user" class="w-5 h-5 absolute left-3 top-2.5 text-slate-400"></i>
+                                <input type="text" id="login-id" required class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Enter ID or Email">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Password</label>
+                            <div class="relative">
+                                <i data-lucide="lock" class="w-5 h-5 absolute left-3 top-2.5 text-slate-400"></i>
+                                <input type="password" value="password123" required class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+                            </div>
+                        </div>
+
+                        <!-- Quick Demo Credentials Hint -->
+                        <div id="demo-credentials-hint" class="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-800">
+                            <span class="font-bold">Demo Preset:</span> Click login directly to access with default account: <span id="demo-account-label" class="font-semibold underline">STU202601 (Alex Morgan)</span>.
+                        </div>
+
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg shadow transition-colors flex items-center justify-center gap-2">
+                            <span>Access Dashboard</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+
+                    <!-- REGISTRATION FORM -->
+                    <form id="register-form" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Full Name</label>
+                            <input type="text" id="reg-name" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Jane Doe">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Email</label>
+                                <input type="email" id="reg-email" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="jane@university.edu">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Department</label>
+                                <select id="reg-dept" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                                    <option value="Computer Science">Computer Science</option>
+                                    <option value="Electrical Eng.">Electrical Eng.</option>
+                                    <option value="Data Science">Data Science</option>
+                                    <option value="Mechanical Eng.">Mechanical Eng.</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="reg-extra-fields" class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Program</label>
+                                <input type="text" id="reg-program" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="B.S. Software Eng">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Semester</label>
+                                <input type="number" id="reg-semester" value="1" min="1" max="8" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Set Password</label>
+                            <input type="password" required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+                        </div>
+
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-lg shadow transition-colors flex items-center justify-center gap-2">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i>
+                            <span>Complete Registration & Login</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- APP CONTAINER (DYNAMIC CONTENT AREA) -->
+        <div id="app-viewport" class="hidden flex-1 flex flex-col gap-6">
+
+            <!-- SUB-NAVIGATION BAR (ROLE-BASED TABS) -->
+            <nav id="role-nav" class="bg-white p-2 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-1">
+                <!-- Injected via JavaScript based on Active Role -->
+            </nav>
+
+            <!-- DYNAMIC VIEW CONTAINER -->
+            <div id="view-container" class="flex-1">
+                <!-- Screens render here dynamically -->
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DIALOG CONTAINER -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div id="modal-content" class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <!-- Modal Body Injected Dynamically -->
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script src="main.js"></script>
+</body>
+</html>
