@@ -134,7 +134,6 @@ class Student(Base):
     credit_transfers = relationship("CreditTransfer", back_populates="student", cascade="all, delete-orphan")
     assignments = relationship("AssignmentSubmission", back_populates="student", cascade="all, delete-orphan")
 
-
 class Faculty(Base):
     __tablename__ = "faculties"
     
@@ -158,6 +157,7 @@ class Admin(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
 class Assignment(Base):
     __tablename__ = "assignments"
     
@@ -174,7 +174,6 @@ class Assignment(Base):
     faculty = relationship("Faculty", back_populates="assignments")
     submissions = relationship("AssignmentSubmission", back_populates="assignment", cascade="all, delete-orphan")
 
-
 class AssignmentSubmission(Base):
     __tablename__ = "assignment_submissions"
     
@@ -190,7 +189,6 @@ class AssignmentSubmission(Base):
     assignment = relationship("Assignment", back_populates="submissions")
     student = relationship("Student", back_populates="assignments")
 
-
 class AttendanceRecord(Base):
     __tablename__ = "attendance_records"
     
@@ -204,7 +202,6 @@ class AttendanceRecord(Base):
     
     # Relationships
     student = relationship("Student", back_populates="attendance_records")
-
 
 class Activity(Base):
     __tablename__ = "activities"
@@ -222,7 +219,6 @@ class Activity(Base):
     # Relationships
     student = relationship("Student", back_populates="activities")
 
-
 class CreditTransfer(Base):
     __tablename__ = "credit_transfers"
     
@@ -239,7 +235,6 @@ class CreditTransfer(Base):
     # Relationships
     student = relationship("Student", back_populates="credit_transfers")
 
-
 # Create all tables
 Base.metadata.create_all(bind=engine)
 
@@ -250,6 +245,7 @@ Base.metadata.create_all(bind=engine)
 class StudentLogin(BaseModel):
     email: str
     password: str
+
 class AdminLogin(BaseModel):
     email: str
     password: str
@@ -259,9 +255,8 @@ class AdminResponse(BaseModel):
     name: str
     email: str
     
-class Config:
-    from_attributes = True
-
+    class Config:
+        from_attributes = True
 
 class StudentRegister(BaseModel):
     name: str
@@ -271,7 +266,6 @@ class StudentRegister(BaseModel):
     department: str
     program: str = "B.S. General"
     semester: int = 1
-
 
 class StudentResponse(BaseModel):
     id: str
@@ -290,11 +284,9 @@ class StudentResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class FacultyLogin(BaseModel):
     email: str
     password: str
-
 
 class FacultyRegister(BaseModel):
     name: str
@@ -302,7 +294,6 @@ class FacultyRegister(BaseModel):
     password: str
     department: str
     course: str = ""
-
 
 class FacultyResponse(BaseModel):
     id: str
@@ -315,12 +306,10 @@ class FacultyResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: dict
-
 
 class AssignmentCreate(BaseModel):
     title: str
@@ -328,7 +317,6 @@ class AssignmentCreate(BaseModel):
     description: str
     due_date: str
     max_marks: int = 100
-
 
 class AssignmentResponse(BaseModel):
     id: str
@@ -345,11 +333,9 @@ class AssignmentResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class AssignmentSubmissionCreate(BaseModel):
     assignment_id: str
     feedback: str = ""
-
 
 class AttendanceRecordResponse(BaseModel):
     subject: str
@@ -360,14 +346,12 @@ class AttendanceRecordResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class ActivityCreate(BaseModel):
     title: str
     category: str
     date: str
     organization: str
     description: str
-
 
 class ActivityResponse(BaseModel):
     id: str
@@ -381,13 +365,11 @@ class ActivityResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class CreditTransferCreate(BaseModel):
     source_inst: str
     course: str
     credits: int
     grade: str
-
 
 class CreditTransferResponse(BaseModel):
     id: str
@@ -404,11 +386,9 @@ class CreditTransferResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class GradeSubmitRequest(BaseModel):
     marks: int
     feedback: str
-
 
 # =========================================================================
 # FASTAPI APP INITIALIZATION
@@ -457,7 +437,6 @@ async def get_current_student(
         )
     return student
 
-
 async def get_current_faculty(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
@@ -482,8 +461,7 @@ async def get_current_faculty(
         )
     return faculty
 
-    
-    async def get_current_admin(
+async def get_current_admin(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ) -> Admin:
@@ -495,7 +473,6 @@ async def get_current_faculty(
     if not admin:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin account not found")
     return admin
-
 
 # =========================================================================
 # AUTHENTICATION ENDPOINTS
@@ -526,7 +503,6 @@ def student_login(credentials: StudentLogin, db: Session = Depends(get_db)):
         "user": StudentResponse.model_validate(student).model_dump()
     }
 
-
 @app.post("/api/auth/faculty-login", response_model=TokenResponse)
 def faculty_login(credentials: FacultyLogin, db: Session = Depends(get_db)):
     """Faculty login endpoint with JWT token generation"""
@@ -551,7 +527,6 @@ def faculty_login(credentials: FacultyLogin, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user": FacultyResponse.model_validate(faculty).model_dump()
     }
-
 
 @app.post("/api/auth/student-register", response_model=TokenResponse)
 def student_register(data: StudentRegister, db: Session = Depends(get_db)):
@@ -594,7 +569,6 @@ def student_register(data: StudentRegister, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user": StudentResponse.model_validate(new_student).model_dump()
     }
-
 
 @app.post("/api/auth/faculty-register", response_model=TokenResponse)
 def faculty_register(data: FacultyRegister, db: Session = Depends(get_db)):
@@ -665,7 +639,6 @@ def get_student_profile(
     """Get current student's profile"""
     return StudentResponse.model_validate(current_student)
 
-
 @app.get("/api/students/{student_id}/assignments")
 def get_student_assignments(
     student_id: str,
@@ -694,7 +667,7 @@ def get_student_assignments(
         
         faculty_name = asn.faculty.name if asn.faculty else "Unknown"
         status = submission.status if submission else "Pending"
-        marks = str(submission.marks) if submission and submission.marks else "N/A"
+        marks = str(submission.marks) if submission and submission.marks is not None else "N/A"
         feedback = submission.feedback if submission else ""
         
         result.append({
@@ -711,7 +684,6 @@ def get_student_assignments(
         })
     
     return result
-
 
 @app.get("/api/students/{student_id}/attendance")
 def get_student_attendance(
@@ -740,7 +712,6 @@ def get_student_attendance(
         for r in records
     ]
 
-
 @app.get("/api/students/{student_id}/activities")
 def get_student_activities(
     student_id: str,
@@ -768,7 +739,6 @@ def get_student_activities(
         }
         for a in activities
     ]
-
 
 @app.post("/api/students/{student_id}/activities", response_model=ActivityResponse)
 def create_activity(
@@ -801,7 +771,6 @@ def create_activity(
     logger.info(f"Activity created for student {student_id}: {new_activity.title}")
     
     return ActivityResponse.model_validate(new_activity)
-
 
 @app.get("/api/students/{student_id}/credits")
 def get_student_credits(
@@ -836,7 +805,6 @@ def get_student_credits(
         }
         for t in transfers
     ]
-
 
 @app.post("/api/students/{student_id}/credits", response_model=CreditTransferResponse)
 def create_credit_transfer(
@@ -879,7 +847,6 @@ def create_credit_transfer(
         status=new_transfer.status,
         request_date=new_transfer.request_date.strftime("%Y-%m-%d")
     )
-
 
 @app.post("/api/students/{student_id}/assignments/{assignment_id}/submit")
 def submit_assignment(
@@ -925,7 +892,6 @@ def submit_assignment(
         "message": "Assignment submitted successfully"
     }
 
-
 # =========================================================================
 # FACULTY ENDPOINTS (Protected)
 # =========================================================================
@@ -936,7 +902,6 @@ def get_faculty_profile(
 ):
     """Get current faculty's profile"""
     return FacultyResponse.model_validate(current_faculty)
-
 
 @app.post("/api/faculties/assignments", response_model=AssignmentResponse)
 def create_assignment(
@@ -973,7 +938,6 @@ def create_assignment(
         max_marks=new_assignment.max_marks
     )
 
-
 @app.get("/api/faculties/assignments")
 def get_faculty_assignments(
     db: Session = Depends(get_db),
@@ -1000,29 +964,25 @@ def get_faculty_assignments(
         for asn in assignments
     ]
 
-
 @app.get("/api/faculties/assignments/{assignment_id}/submissions")
 def get_assignment_submissions(
     assignment_id: str,
     db: Session = Depends(get_db),
     current_faculty: Faculty = Depends(get_current_faculty)
 ):
-    """Get all submissions for an assignment"""
-    assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+    """Get all submissions for a specific assignment"""
+    # Verify the assignment belongs to the current faculty
+    assignment = db.query(Assignment).filter(
+        Assignment.id == assignment_id, 
+        Assignment.faculty_id == current_faculty.id
+    ).first()
     
     if not assignment:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Assignment not found or unauthorized"
         )
-    
-    if assignment.faculty_id != current_faculty.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to view submissions for this assignment"
-        )
-    
-    # Optimize with joinedload
+        
     submissions = db.query(AssignmentSubmission).options(
         joinedload(AssignmentSubmission.student)
     ).filter(AssignmentSubmission.assignment_id == assignment_id).all()
@@ -1030,16 +990,15 @@ def get_assignment_submissions(
     return [
         {
             "id": sub.id,
-            "studentId": sub.student_id,
-            "studentName": sub.student.name,
+            "student_name": sub.student.name,
+            "student_id": sub.student.id,
             "status": sub.status,
             "marks": sub.marks,
             "feedback": sub.feedback,
-            "submittedAt": sub.submitted_at.strftime("%Y-%m-%d %H:%M:%S") if sub.submitted_at else ""
+            "submitted_at": sub.submitted_at
         }
         for sub in submissions
     ]
-
 
 @app.put("/api/faculties/submissions/{submission_id}/grade")
 def grade_submission(
@@ -1048,23 +1007,24 @@ def grade_submission(
     db: Session = Depends(get_db),
     current_faculty: Faculty = Depends(get_current_faculty)
 ):
-    """Grade a specific assignment submission"""
+    """Grade a student's assignment submission"""
     submission = db.query(AssignmentSubmission).options(
         joinedload(AssignmentSubmission.assignment)
     ).filter(AssignmentSubmission.id == submission_id).first()
     
-    if not submission:
+    # Check existence and authorization in one go
+    if not submission or submission.assignment.faculty_id != current_faculty.id:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Submission not found"
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Submission not found or unauthorized"
         )
-    
-    if submission.assignment.faculty_id != current_faculty.id:
+        
+    if data.marks > submission.assignment.max_marks:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to grade this submission"
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Marks cannot exceed the maximum of {submission.assignment.max_marks}"
         )
-    
+        
     submission.marks = data.marks
     submission.feedback = data.feedback
     submission.status = "Graded"
@@ -1072,251 +1032,10 @@ def grade_submission(
     db.commit()
     db.refresh(submission)
     
-    logger.info(f"Submission graded by faculty {current_faculty.id}: {submission_id}")
+    logger.info(f"Submission {submission_id} graded by faculty {current_faculty.id}")
     
     return {
         "id": submission.id,
         "status": submission.status,
-        "marks": submission.marks,
-        "feedback": submission.feedback
+        "message": "Submission graded successfully"
     }
-
-
-@app.get("/api/faculties/students")
-def get_faculty_students(
-    db: Session = Depends(get_db),
-    current_faculty: Faculty = Depends(get_current_faculty)
-):
-    """Get all students (for faculty view)"""
-    students = db.query(Student).all()
-    return [
-        {
-            "id": s.id,
-            "name": s.name,
-            "email": s.email,
-            "department": s.department,
-            "cgpa": s.cgpa,
-            "attendancePct": s.attendance_pct,
-            "avatar": s.avatar
-        }
-        for s in students
-    ]
-
-
-# =========================================================================
-# ADMIN ENDPOINTS (Protected)
-# =========================================================================
-
-@app.get("/api/admin/students")
-def get_all_students(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-):
-    """Get all students (admin only)"""
-    payload = decode_access_token(token)
-    if payload.get("type") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    
-    students = db.query(Student).all()
-    return [
-        {
-            "id": s.id,
-            "name": s.name,
-            "email": s.email,
-            "department": s.department,
-            "cgpa": s.cgpa,
-            "attendancePct": s.attendance_pct,
-            "avatar": s.avatar
-        }
-        for s in students
-    ]
-
-
-@app.get("/api/admin/faculties")
-def get_all_faculties(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-):
-    """Get all faculties (admin only)"""
-    payload = decode_access_token(token)
-    if payload.get("type") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    
-    faculties = db.query(Faculty).all()
-    return [FacultyResponse.model_validate(f) for f in faculties]
-
-
-@app.get("/api/admin/credit-transfers")
-def get_all_credit_transfers(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-):
-    """Get all pending credit transfers (admin only)"""
-    payload = decode_access_token(token)
-    if payload.get("type") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    
-    transfers = db.query(CreditTransfer).options(
-        joinedload(CreditTransfer.student)
-    ).all()
-    
-    return [
-        {
-            "id": t.id,
-            "studentId": t.student_id,
-            "studentName": t.student.name,
-            "sourceInst": t.source_inst,
-            "destInst": t.dest_inst,
-            "course": t.course,
-            "credits": t.credits,
-            "grade": t.grade,
-            "status": t.status,
-            "requestDate": t.request_date.strftime("%Y-%m-%d") if t.request_date else ""
-        }
-        for t in transfers
-    ]
-
-
-@app.put("/api/admin/credit-transfers/{transfer_id}/approve")
-def approve_credit_transfer(
-    transfer_id: str,
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-):
-    """Approve credit transfer request"""
-    payload = decode_access_token(token)
-    if payload.get("type") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    
-    transfer = db.query(CreditTransfer).filter(CreditTransfer.id == transfer_id).first()
-    
-    if not transfer:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transfer not found"
-        )
-    
-    transfer.status = "Approved"
-    
-    # Update student's total credits
-    student = db.query(Student).filter(Student.id == transfer.student_id).first()
-    if student:
-        student.total_credits += transfer.credits
-    
-    db.commit()
-    
-    logger.info(f"Credit transfer approved: {transfer_id}")
-    
-    return {
-        "id": transfer.id,
-        "status": transfer.status,
-        "message": "Credit transfer approved"
-    }
-
-
-@app.put("/api/admin/credit-transfers/{transfer_id}/reject")
-def reject_credit_transfer(
-    transfer_id: str,
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-):
-    """Reject credit transfer request"""
-    payload = decode_access_token(token)
-    if payload.get("type") != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    
-    transfer = db.query(CreditTransfer).filter(CreditTransfer.id == transfer_id).first()
-    
-    if not transfer:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transfer not found"
-        )
-    
-    transfer.status = "Rejected"
-    db.commit()
-    
-    logger.info(f"Credit transfer rejected: {transfer_id}")
-    
-    return {
-        "id": transfer.id,
-        "status": transfer.status,
-        "message": "Credit transfer rejected"
-    }
-
-
-# =========================================================================
-# HEALTH CHECK
-# =========================================================================
-
-@app.get("/api/health")
-def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "operational",
-        "message": "EduPulse ERP Backend is running",
-        "version": settings.app_version
-    }
-
-
-# =========================================================================
-# STARTUP & SHUTDOWN EVENTS
-# =========================================================================
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database on startup"""
-    logger.info(f"Starting {settings.app_name} v{settings.app_version}")
-    db_info = settings.database_url.split("@")[1] if "@" in settings.database_url else "unknown"
-    logger.info(f"Database: {db_info}")
-    logger.info(f"CORS Origins: {settings.cors_origins}")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    logger.info(f"Shutting down {settings.app_name}")
-    engine.dispose()
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000
-    )
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info(f"Starting {settings.app_name} v{settings.app_version}")
-    db = SessionLocal()
-    try:
-        admin_email = "admin@edupulse.com"
-        if not db.query(Admin).filter(Admin.email == admin_email).first():
-            db.add(Admin(
-                name="System Administrator",
-                email=admin_email,
-                hashed_password=get_password_hash("Admin@123456")
-            ))
-            db.commit()
-            logger.info("Default admin user created: admin@edupulse.com / Admin@123456")
-    finally:
-        db.close()
-
-
