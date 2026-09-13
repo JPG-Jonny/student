@@ -196,7 +196,7 @@ class AttendanceRecord(Base):
     student_id = Column(String, ForeignKey("students.id"), index=True)
     subject = Column(String, nullable=False)
     total_classes = Column(Integer, default=0)
-    attended = Column(Integer, default=0)
+    attended_classes = Column(Integer, default=0)
     pct = Column(Float, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow)
     
@@ -706,7 +706,7 @@ def get_student_attendance(
         {
             "subject": r.subject,
             "totalClasses": r.total_classes,
-            "attended": r.attended,
+            "attended": r.attended_classes,
             "pct": r.pct
         }
         for r in records
